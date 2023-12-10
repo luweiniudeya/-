@@ -10,6 +10,8 @@ void BUS_STATION::inquire(int origin, int destination)
 }
 bool BUS_STATION::revise_dot(int new_value, int whichroute, int begin, int end)
 {
+	if (whichroute<1 || whichroute>routenum||begin>this->dotnum||begin<1|| end>this->dotnum || end < 1)
+		return 0;
 	EDGE* edgeptr = this->route[whichroute];
 	while (edgeptr != nullptr)
 	{
@@ -18,6 +20,7 @@ bool BUS_STATION::revise_dot(int new_value, int whichroute, int begin, int end)
 			edgeptr->value = new_value;
 			return 1;
 		}
+		edgeptr = edgeptr->next;
 	}
 	return 0;
 }
@@ -29,9 +32,64 @@ bool BUS_STATION::add_dot(string new_name)
 	dotnum++;
 	return 1;
 }
-bool BUS_STATION::delete_route(int whichroute)
+bool BUS_STATION::prolong(int whichroute, int newstation, int newvalue)
 {
+	//可以实现循环线 但不能出现打结情况 
+	if (whichroute<1 || whichroute>routenum || newstation<1 || newstation>this->dotnum)
+		return 0;
+	EDGE* edgeptr = this->route[whichroute];
+	EDGE* memory = nullptr;
+	while (edgeptr != nullptr)
+	{
+		if (edgeptr->to == newstation)
+			return 0;
+		memory = edgeptr;
+		edgeptr = edgeptr->next;
+	}
+	memory->next = new EDGE(memory->to, newstation, newvalue);
+	map[memory->to][newstation] = whichroute;
 	return 1;
+}
+bool BUS_STATION::delete_route(int whichroute)
+{//删除路线代表着该路线顺位后的路线序号均要改边 map重赋值
+	if (whichroute > routenum||whichroute<1)
+		return 0;
+	delete this->route[whichroute];
+	for (int i = whichroute; i < this->routenum; i++)
+		route[i] = route[i + 1];
+	this->routenum--;
+	EDGE* edgeptr;
+	memset(map, 0, sizeof(map));
+	for (int i = 1; i <= routenum; i++)
+	{
+		edgeptr = route[i];
+		while (edgeptr != nullptr)
+		{
+			map[edgeptr->from][edgeptr->to] = i;
+			edgeptr = edgeptr->next;
+		}
+	}
+	return 1;
+}
+int BUS_STATION::add_route()
+{
+	int n;
+	int origin, destination, newvalue;
+	EDGE* edgeptr = nullptr;
+	scanf("%d", &n);
+	scanf("%d%d%d", &origin, &destination, &newvalue);
+	routenum++;
+	this->route[routenum] = new EDGE(origin, destination, newvalue);
+	map[origin][destination] = routenum;
+	edgeptr = route[routenum];
+	for (int i = 1; i < n; i++)
+	{
+		scanf("%d%d%d", &origin, &destination, &newvalue);
+		edgeptr->next=new EDGE(origin, destination, newvalue);
+		map[origin][destination] = routenum;
+		edgeptr = edgeptr->next;
+	}
+	return routenum;
 }
 int BUS_STATION::bellman_ford(int origin, int destination)
 {
